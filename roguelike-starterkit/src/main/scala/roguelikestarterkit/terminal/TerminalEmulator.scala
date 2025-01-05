@@ -46,14 +46,8 @@ final case class TerminalEmulator(size: Size, charMap: SparseGrid[MapTile]) exte
 
   def putLine(startCoords: Point, text: String, fgColor: RGBA, bgColor: RGBA): TerminalEmulator =
     val tiles: Batch[(Point, MapTile)] =
-      Batch.fromArray(text.toCharArray).zipWithIndex.map { case (c, i) =>
-        Tile.charCodes.get(if c == '\\' then "\\" else c.toString) match
-          case None =>
-            // Couldn't find character, skip it.
-            startCoords + Point(i, 0) -> MapTile(Tile.SPACE, fgColor, bgColor)
-
-          case Some(char) =>
-            startCoords + Point(i, 0) -> MapTile(Tile(char), fgColor, bgColor)
+      TerminalEmulator.stringToTileBatch(text).zipWithIndex.map { case (t, i) =>
+        startCoords + Point(i, 0) -> MapTile(t, fgColor, bgColor)
       }
     put(tiles)
 
@@ -74,6 +68,39 @@ final case class TerminalEmulator(size: Size, charMap: SparseGrid[MapTile]) exte
             xs,
             yOffset + 1,
             term.putLine(startCoords + Point(0, yOffset), x, fgColor, bgColor)
+          )
+
+    rec(textLines.toList, 0, this)
+
+  def putTileLine(
+      startCoords: Point,
+      tiles: Batch[Tile],
+      fgColor: RGBA,
+      bgColor: RGBA
+  ): TerminalEmulator =
+    val res: Batch[(Point, MapTile)] =
+      tiles.zipWithIndex.map { case (t, i) =>
+        startCoords + Point(i, 0) -> MapTile(t, fgColor, bgColor)
+      }
+    put(res)
+
+  def putTileLines(
+      startCoords: Point,
+      textLines: Batch[Batch[Tile]],
+      fgColor: RGBA,
+      bgColor: RGBA
+  ): TerminalEmulator =
+    @tailrec
+    def rec(remaining: List[Batch[Tile]], yOffset: Int, term: TerminalEmulator): TerminalEmulator =
+      remaining match
+        case Nil =>
+          term
+
+        case x :: xs =>
+          rec(
+            xs,
+            yOffset + 1,
+            term.putTileLine(startCoords + Point(0, yOffset), x, fgColor, bgColor)
           )
 
     rec(textLines.toList, 0, this)
@@ -242,3 +269,8 @@ object TerminalEmulator:
       screenSize,
       SparseGrid[MapTile](screenSize)
     )
+
+  def stringToTileBatch(text: String): Batch[Tile] =
+    Batch.fromArray(text.toCharArray).map { c =>
+      Tile.charCodes.get(if c == '\\' then "\\" else c.toString).fold(Tile.SPACE)(Tile.apply)
+    }

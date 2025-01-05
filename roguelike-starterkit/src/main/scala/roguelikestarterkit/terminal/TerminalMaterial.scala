@@ -1,8 +1,12 @@
 package roguelikestarterkit.terminal
 
 import indigo.*
+import indigo.shared.shader.ShaderPrimitive
+import indigo.shared.shader.Uniform
+import indigo.shared.shader.UniformBlock
+import indigo.shared.shader.UniformBlockName
 import indigo.shared.shader.library.Lighting
-import indigo.syntax.shaders.*
+import ultraviolet.syntax.*
 
 import scala.annotation.nowarn
 
@@ -57,9 +61,9 @@ final case class TerminalMaterial(
       UniformBlock(
         UniformBlockName("RogueLikeTextData"),
         Batch(
-          Uniform("FOREGROUND") -> foreground.asVec4,
-          Uniform("BACKGROUND") -> background.asVec4,
-          Uniform("MASK")       -> mask.asVec4
+          Uniform("FOREGROUND") -> ShaderPrimitive.vec4.fromRGBA(foreground),
+          Uniform("BACKGROUND") -> ShaderPrimitive.vec4.fromRGBA(background),
+          Uniform("MASK")       -> ShaderPrimitive.vec4.fromRGBA(mask)
         )
       )
 
@@ -113,7 +117,7 @@ object TerminalMaterial:
       )
     )
 
-  val shaders: Set[Shader] =
+  val shaders: Set[ShaderProgram] =
     Set(standardShader, standardShaderLit)
 
   def apply(tileMap: AssetName): TerminalMaterial =
@@ -143,8 +147,6 @@ object TerminalMaterial:
     TerminalMaterial(tileMap, foreground, background, mask, lightingModel, None)
 
   object ShaderImpl:
-
-    import ultraviolet.syntax.*
 
     final case class Env(
         FOREGROUND: vec4,

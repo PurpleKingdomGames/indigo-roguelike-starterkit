@@ -22,6 +22,8 @@
             pkgs.nodejs
             pkgs.yarn
             pkgs.nodePackages_latest.http-server
+            pkgs.bloop
+            pkgs.scala-cli
           ];
           shellHook = startupHook;
         };

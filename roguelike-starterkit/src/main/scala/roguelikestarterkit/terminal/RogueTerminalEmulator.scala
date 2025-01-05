@@ -105,20 +105,13 @@ final class RogueTerminalEmulator(
       foregroundColor: RGBA,
       backgroundColor: RGBA
   ): RogueTerminalEmulator =
-    Batch.fromArray(text.toCharArray).zipWithIndex.foreach { case (c, i) =>
-      val cc = Tile.charCodes.get(if c == '\\' then "\\" else c.toString)
-
-      cc match
-        case None =>
-          ()
-
-        case Some(char) =>
-          updateAt(
-            RogueTerminalEmulator.pointToIndex(startCoords + Point(i, 0), size.width),
-            Tile(char),
-            foregroundColor,
-            backgroundColor
-          )
+    TerminalEmulator.stringToTileBatch(text).zipWithIndex.foreach { case (t, i) =>
+      updateAt(
+        RogueTerminalEmulator.pointToIndex(startCoords + Point(i, 0), size.width),
+        t,
+        foregroundColor,
+        backgroundColor
+      )
     }
 
     this
@@ -147,6 +140,48 @@ final class RogueTerminalEmulator(
           )
 
     rec(textLines.toList, 0, this)
+
+  def putTileLine(
+      startCoords: Point,
+      tiles: Batch[Tile],
+      foregroundColor: RGBA,
+      backgroundColor: RGBA
+  ): RogueTerminalEmulator =
+    tiles.zipWithIndex.foreach { case (t, i) =>
+      updateAt(
+        RogueTerminalEmulator.pointToIndex(startCoords + Point(i, 0), size.width),
+        t,
+        foregroundColor,
+        backgroundColor
+      )
+    }
+
+    this
+
+  def putTileLines(
+      startCoords: Point,
+      tileLines: Batch[Batch[Tile]],
+      foregroundColor: RGBA,
+      backgroundColor: RGBA
+  ): RogueTerminalEmulator =
+    @tailrec
+    def rec(
+        remaining: List[Batch[Tile]],
+        yOffset: Int,
+        term: RogueTerminalEmulator
+    ): RogueTerminalEmulator =
+      remaining match
+        case Nil =>
+          term
+
+        case x :: xs =>
+          rec(
+            xs,
+            yOffset + 1,
+            term.putTileLine(startCoords + Point(0, yOffset), x, foregroundColor, backgroundColor)
+          )
+
+    rec(tileLines.toList, 0, this)
 
   def get(coords: Point): Option[MapTile] =
     val idx = RogueTerminalEmulator.pointToIndex(coords, size.width)

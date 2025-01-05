@@ -1,5 +1,7 @@
 package demo
 
+import demo.models.*
+import demo.scenes.*
 import indigo.*
 import indigo.scenes.*
 import indigoextras.subsystems.FPSCounter
@@ -13,16 +15,18 @@ object RogueLikeGame extends IndigoGame[Size, Size, Model, ViewModel]:
   val magnification: Int = 2
 
   def initialScene(bootData: Size): Option[SceneName] =
-    Option(UIScene.name)
+    Option(NoTerminalUI.name)
 
   def scenes(bootData: Size): NonEmptyList[Scene[Size, Model, ViewModel]] =
     NonEmptyList(
-      UIScene,
-      UISubSystemScene,
+      NoTerminalUI,
+      ColourWindowScene,
+      MultipleWindowsScene,
       LightingScene,
       RogueTerminalEmulatorScene,
       TerminalTextScene,
-      TerminalEmulatorScene
+      TerminalEmulatorScene,
+      WindowDemoScene
     )
 
   val eventFilters: EventFilters =
@@ -37,6 +41,7 @@ object RogueLikeGame extends IndigoGame[Size, Size, Model, ViewModel]:
         .withFonts(RoguelikeTiles.Size10x10.Fonts.fontInfo)
         .withAssets(Assets.assets.assetSet)
         .withShaders(
+          indigoextras.ui.shaders.all ++
           shaders.all ++ Set(
             TerminalTextScene.customShader(ShaderId("my shader"))
           )
@@ -53,7 +58,7 @@ object RogueLikeGame extends IndigoGame[Size, Size, Model, ViewModel]:
   def setup(bootData: Size, assetCollection: AssetCollection, dice: Dice): Outcome[Startup[Size]] =
     Outcome(Startup.Success(bootData))
 
-  def updateModel(context: FrameContext[Size], model: Model): GlobalEvent => Outcome[Model] =
+  def updateModel(context: Context[Size], model: Model): GlobalEvent => Outcome[Model] =
     case KeyboardEvent.KeyUp(Key.PAGE_UP) =>
       Outcome(model).addGlobalEvents(SceneEvent.LoopPrevious)
 
@@ -65,43 +70,21 @@ object RogueLikeGame extends IndigoGame[Size, Size, Model, ViewModel]:
       Outcome(model)
 
     case SceneEvent.SceneChange(_, _, _) =>
-      Outcome(model.copy(mouseOverWindows = Batch.empty))
+      Outcome(model.copy(pointerOverWindows = Batch.empty))
 
     case _ =>
       Outcome(model)
 
   def updateViewModel(
-      context: FrameContext[Size],
+      context: Context[Size],
       model: Model,
       viewModel: ViewModel
   ): GlobalEvent => Outcome[ViewModel] =
     _ => Outcome(viewModel)
 
   def present(
-      context: FrameContext[Size],
+      context: Context[Size],
       model: Model,
       viewModel: ViewModel
   ): Outcome[SceneUpdateFragment] =
     Outcome(SceneUpdateFragment.empty)
-
-final case class Model(mouseOverWindows: Batch[WindowId])
-
-object Model:
-
-  val defaultCharSheet: CharSheet =
-    CharSheet(
-      Assets.assets.AnikkiSquare10x10,
-      Size(10),
-      RoguelikeTiles.Size10x10.charCrops,
-      RoguelikeTiles.Size10x10.Fonts.fontKey
-    )
-
-  val initial: Model =
-    Model(Batch.empty)
-
-final case class ViewModel()
-object ViewModel:
-  def initial: ViewModel =
-    ViewModel()
-
-final case class Log(msg: String) extends GlobalEvent
